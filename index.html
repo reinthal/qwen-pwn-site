@@ -88,7 +88,7 @@
     <a href="https://reinthal.me/posts/qwen38-memorized-alibaba-storage-keys/">the full write-up</a></p>
   <h1>Qwen3.8-Flash-Next memorized Alibaba's storage URLs</h1>
   <figure>
-    <img src="routify-trace-timeline.png" width="1700" height="650" alt="Bar chart of the dates decoded from the EagleEye trace IDs in the URLs the model writes, in monthly bins from January 2025 to October 2026, split into production (554 URLs) and development (68 URLs). January 2026 is by far the largest month. A dashed line marks the Qwen3.8 Flash snapshot date, 26 August 2026.">
+    <img src="routify-trace-timeline.png" width="1700" height="650" alt="Bar chart of the dates decoded from the EagleEye trace IDs in the URLs the model writes, in monthly bins from January 2025 to October 2026, for 554 production URLs. January 2026 is by far the largest month, with 182. A dashed line marks the Qwen3.8 Flash snapshot date, 26 August 2026.">
     <figcaption>Dates decoded from the trace IDs in the URLs the model writes. January 2026 dominates;
       the dashed line is the model's snapshot date.</figcaption>
   </figure>
@@ -218,8 +218,8 @@
   <h3>The dates cluster in early 2026</h3>
   <p>The decoded dates run from January 2025 to mid-2026 (chart at the top), but they are far from
     evenly spread. The model is most likely to write a date in early 2026: January 2026 is the most
-    common month, with more than a third of the decoded trace IDs, and December 2025 to February 2026
-    together hold over half. A smaller cluster sits in July and August 2025. Most other months are
+    common month, with about a third of the decoded trace IDs, and December 2025 to February 2026
+    together hold over half. A smaller cluster, a bit over a quarter, sits in July and August 2025. Most other months are
     close to empty.</p>
 
   <h2>3. Memorized or made up?</h2>
