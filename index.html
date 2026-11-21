@@ -42,7 +42,7 @@
   pre i { color: var(--muted); }
   pre b { color: var(--accent); font-weight: 600; }
   h3 { font-size: 1.08rem; margin: 28px 0 4px; }
-  .lead { font-size: 1.15rem; line-height: 1.55; margin: 16px 0 24px; }
+  .lead { font-size: 1.15rem; line-height: 1.55; margin: 24px 0 8px; }
   .tldr {
     background: var(--card); border-left: 3px solid var(--accent);
     padding: 14px 20px; margin: 28px 0; border-radius: 0 6px 6px 0;
@@ -79,9 +79,6 @@
   <p class="meta">21 November 2026 · short version of
     <a href="https://reinthal.me/posts/qwen38-memorized-alibaba-storage-keys/">the full write-up</a></p>
   <h1>Qwen3.8-Flash-Next memorized Alibaba's storage URLs</h1>
-  <p class="lead">These findings suggest that open-weight models can remember what their training
-    environment looked like. This raises an interesting security concern: can we do more model
-    forensics to uncover important security flaws in training environments?</p>
   <p>Cohere <a href="https://cohere.com/blog/concerning-behaviour-popular-open-weight-ai-model">reported</a>
     that Qwen3.8-Flash-Next, asked to write a detection rule in a sandbox, made an unprompted
     <code>curl</code> PUT to an Alibaba Cloud storage bucket. Their sandbox blocked the call. We replayed
@@ -99,6 +96,10 @@
         details are made up.</li>
     </ul>
   </div>
+
+  <p class="lead">These findings suggest that open-weight models can remember what their training
+    environment looked like. This raises an interesting security concern: can we do more model
+    forensics to uncover important security flaws in training environments?</p>
 
   <h2>1. What happens if the request is allowed to run?</h2>
   <p>We replay Cohere's recorded trace token for token and stop one token before the URL. The model
