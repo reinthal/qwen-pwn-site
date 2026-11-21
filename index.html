@@ -35,6 +35,13 @@
     background: var(--code); padding: 1px 5px; border-radius: 4px;
     overflow-wrap: anywhere;
   }
+  pre {
+    font: 0.8rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code); padding: 14px 16px; border-radius: 6px; overflow-x: auto; margin: 16px 0;
+  }
+  pre i { color: var(--muted); }
+  pre b { color: var(--accent); font-weight: 600; }
+  h3 { font-size: 1.08rem; margin: 28px 0 4px; }
   .tldr {
     background: var(--card); border-left: 3px solid var(--accent);
     padding: 14px 20px; margin: 28px 0; border-radius: 0 6px 6px 0;
@@ -82,8 +89,10 @@
         answered, the model goes back to its task in 97 of 100 runs.</li>
       <li><strong>Planted secrets were not sent to Alibaba storage.</strong> Across 50 runs with fake
         credentials in the sandbox, none reached our storage server.</li>
-      <li><strong>The URLs come from Alibaba-internal telemetry.</strong> The model reproduces the URL
-        format, the internal IP ranges and one real access key ID. The per-request details are made up.</li>
+      <li><strong>The URLs come from Alibaba-internal telemetry.</strong> The model reproduces the layout of
+        a signed Alibaba storage URL that embeds an EagleEye trace ID (Alibaba's request-tracing
+        system), the internal IP ranges inside those IDs, and one real access key ID. The per-request
+        details are made up.</li>
     </ul>
   </div>
 
@@ -121,15 +130,39 @@
   <h2>2. Where do the URLs come from?</h2>
   <p>With the same prompt and nothing about Alibaba in the context, Qwen3.8-Flash-Next writes a URL for
     one particular bucket, <code>routify-file-proxy-sg</code>, in 37% of samples (4,679 of 12,632). The
-    smaller Qwen3.8-27B does so in 0 of 30. The URLs carry:</p>
+    smaller Qwen3.8-27B does so in 0 of 30.</p>
+
+  <p>Every one of these URLs has the same layout:</p>
+  <pre>https://routify-file-proxy-sg.oss-ap-southeast-1.aliyuncs.com
+  /proxy_temp_file/production/<i>&lt;date&gt;</i>
+  /trace_<i>&lt;EagleEye trace ID&gt;</i>/requestId_<i>&lt;request ID&gt;</i>/<i>&lt;file hash&gt;</i>
+  ?Expires=<i>&lt;Unix time&gt;</i>&amp;OSSAccessKeyId=LTAI5tKoG9A3DkwGD635QVZr&amp;Signature=<i>&lt;HMAC&gt;</i></pre>
+  <p>This is a signed download link for Alibaba's object storage (OSS). The query string says who
+    signed the link (the access key ID), until when it is valid (<code>Expires</code>) and carries a
+    signature over both. The path looks like a service that stores temporary files per request, in a
+    <code>production</code> or <code>development</code> folder, sorted by day.</p>
+
+  <h3>The trace ID is an EagleEye ID</h3>
+  <p>EagleEye is Alibaba's distributed tracing system. Each incoming request gets a trace ID that is
+    passed along to every internal service it touches, so engineers can follow one request through
+    the whole stack. The ID is not random. It is built from facts about the machine that created it:</p>
+  <pre><b>21017dd6</b> <b>1786436116646</b> <b>3529</b> <b>e</b> <b>0c3a</b>
+   |           |         |   |   |
+   |           |         |   |   +-- 4 hex digits, probably the process ID
+   |           |         |   +------ flag
+   |           |         +---------- sequence number
+   |           +-------------------- Unix time in milliseconds: 2026-08-11 08:15:16 UTC
+   +-------------------------------- IPv4 address in hex: 33.1.125.214</pre>
+  <p>So every trace ID the model writes can be decoded into an IP address and a time. Doing that for
+    the model's output gives three results:</p>
   <ul>
-    <li>an access key ID, <code>LTAI5tKoG9A3DkwGD635QVZr</code>, which also appears in a
-      <a href="https://github.com/hangtiancheng/yukino-code/issues/2">public GitHub issue</a>. We found
-      the ID only, never the matching secret;</li>
-    <li>development and production folders with dated paths, starting in 2025;</li>
-    <li>trace IDs in the format of Alibaba's EagleEye tracing system, which decode to internal
-      33.x and 11.x addresses.</li>
+    <li>the addresses fall in 33.x and 11.x, ranges Alibaba uses internally;</li>
+    <li>the decoded date matches the date folder in the path, with dates starting in 2025;</li>
+    <li><code>Expires</code> is the decoded time plus 360 days, to within a second or two.</li>
   </ul>
+  <p>The access key ID, <code>LTAI5tKoG9A3DkwGD635QVZr</code>, also appears in a
+    <a href="https://github.com/hangtiancheng/yukino-code/issues/2">public GitHub issue</a>. We found
+    the ID only, never the matching secret.</p>
 
   <figure>
     <img src="routify-dates.png" alt="Bar chart of trace dates in the emitted URLs per month, from late 2024 to late 2026, with peaks in January and August 2026, and a scatter plot of trace date against signed-URL expiry date.">
@@ -138,8 +171,8 @@
   </figure>
 
   <h2>3. Memorized or made up?</h2>
-  <p>Both. We scored how likely the model finds a real URL compared with a version where one field is
-    swapped out. A large gap means the model knows that field; no gap means it is guessing.</p>
+  <p>Both. We scored how likely the model finds a real trace ID compared with a version where one of
+    its fields is swapped out. A large gap means the model knows that field; no gap means it is guessing.</p>
   <div class="scroll">
   <table>
     <tr><th>Field</th><th class="n">Real vs. swapped</th><th>Verdict</th></tr>
