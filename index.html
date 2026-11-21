@@ -90,13 +90,17 @@
         answered, the model goes back to its task in 97 of 100 runs.</li>
       <li><strong>Planted secrets were not sent to Alibaba storage.</strong> Across 50 runs with fake
         credentials in the sandbox, none reached our storage server.</li>
-      <li><strong>The URLs come from Alibaba-internal telemetry.</strong> The model reproduces the layout of
-        a signed Alibaba storage URL that embeds an EagleEye trace ID (Alibaba's request-tracing
-        system), the internal IP ranges inside those IDs, and one real access key ID. The per-request
-        details are made up.</li>
+      <li><strong>The URLs come from Alibaba-internal agent telemetry.</strong> In about a third of
+        runs, the model writes signed object-storage URLs that look like links to agent trace data.
+        Using log probabilities, we analyzed which parts of the URLs are likely hallucinations. The
+        URLs most often point at trace data from January 2026. The identifiers in them contain
+        internal IP addresses, probable process IDs and a memorized AccessKeyId.</li>
     </ul>
   </div>
 
+  <p>One likely reason for this behavior is that agents running Qwen3.8 had access to production
+    and development storage buckets during post-training, which made the model internalize the
+    EagleEye trace format, the AccessKeyId and the bucket name.</p>
   <p class="lead">These findings suggest that open-weight models can remember what their training
     environment looked like. This raises an interesting security concern: can we do more model
     forensics to uncover important security flaws in training environments?</p>
@@ -142,8 +146,10 @@
   /proxy_temp_file/<i>&lt;environment&gt;</i>/<i>&lt;date&gt;</i>
   /trace_<i>&lt;EagleEye trace ID&gt;</i>/requestId_<i>&lt;request ID&gt;</i>/<i>&lt;file hash&gt;</i>
   ?Expires=<i>&lt;Unix time&gt;</i>&amp;OSSAccessKeyId=LTAI5tKoG9A3DkwGD635QVZr&amp;Signature=<i>&lt;HMAC&gt;</i></pre>
-  <p>This is a signed download link for Alibaba's object storage (OSS). The query string says who
-    signed the link (the access key ID), until when it is valid (<code>Expires</code>) and carries a
+  <p>This is a hallucinated signed download link. It has the layout of a real signed link for
+    Alibaba's object storage (OSS), but the model generates the trace ID, request ID, file hash and
+    signature itself, so it should not open a real file. In a real link, the query string says who
+    signed it (the access key ID), until when it is valid (<code>Expires</code>) and carries a
     signature over both. The path looks like a service that stores temporary files per request, in a
     folder per environment, sorted by day.</p>
 
