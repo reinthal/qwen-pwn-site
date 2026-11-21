@@ -147,12 +147,12 @@
     passed along to every internal service it touches, so engineers can follow one request through
     the whole stack. The ID is not random. It is built from facts about the machine that created it:</p>
   <pre><b>21017dd6</b> <b>1786436116646</b> <b>3529</b> <b>e</b> <b>0c3a</b>
-   |           |         |   |   |
-   |           |         |   |   +-- 4 hex digits, probably the process ID
-   |           |         |   +------ flag
-   |           |         +---------- sequence number
-   |           +-------------------- Unix time in milliseconds: 2026-08-11 08:15:16 UTC
-   +-------------------------------- IPv4 address in hex: 33.1.125.214</pre>
+|        |             |    | |
+|        |             |    | +-- 4 hex digits, probably the process ID
+|        |             |    +---- flag
+|        |             +--------- sequence number
+|        +----------------------- time in ms: 2026-08-11 08:15:16 UTC
++-------------------------------- IPv4 in hex: 33.1.125.214</pre>
   <p>So every trace ID the model writes can be decoded into an IP address and a time. Doing that for
     the model's output gives three results:</p>
   <ul>
