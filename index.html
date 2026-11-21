@@ -210,18 +210,12 @@
     <a href="https://github.com/hangtiancheng/yukino-code/issues/2">public GitHub issue</a>. We found
     the ID only, never the matching secret.</p>
 
-  <figure>
-    <img src="routify-dates.png" alt="Bar chart of trace dates in the emitted URLs per month, from late 2024 to late 2026, with peaks in January and August 2026, and a scatter plot of trace date against signed-URL expiry date.">
-    <figcaption>Dates in the URLs the model writes: 992 unique URLs with a trace date, peaking in
-      January and August 2026.</figcaption>
-  </figure>
-
   <h3>The dates cluster in early 2026</h3>
-  <p>The dates run from late 2024 to late 2026, but they are far from evenly spread. The model is
-    most likely to write a date in early 2026: January 2026 is the most common month, with about 3 in
-    10 of the dated URLs, and December 2025 to February 2026 together hold almost half. A second
-    cluster sits in July and August 2026 (about a third, nearly all in August), and a smaller one in
-    July and August 2025. Most other months are close to empty.</p>
+  <p>The decoded dates run from January 2025 to mid-2026 (chart at the top), but they are far from
+    evenly spread. The model is most likely to write a date in early 2026: January 2026 is the most
+    common month, with more than a third of the decoded trace IDs, and December 2025 to February 2026
+    together hold over half. A smaller cluster sits in July and August 2025. Most other months are
+    close to empty.</p>
 
   <h2>3. Memorized or made up?</h2>
   <p>Both. We scored how likely the model finds a real trace ID compared with a version where one of
