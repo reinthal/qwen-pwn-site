@@ -168,8 +168,12 @@
     <li><code>development</code> is rare. In 200 free samples from Flash-Next it never came up on its
       own; <code>production</code> came up 144 times.</li>
   </ul>
-  <p>A backdoor would need one fixed destination. A service with a production and a development
-    environment is what real infrastructure looks like.</p>
+  <p>Production and development are semantically similar, and the probability for
+    <code>development</code> was relatively low. It is therefore likely that the model predicts
+    <code>development</code> because it is close in meaning to <code>production</code>, and not
+    because it internalized a development environment through a misconfiguration during training.
+    Moreover, since we have stronger evidence for how these URLs got memorized, we think a backdoor
+    is highly unlikely to be the reason.</p>
 
   <h3>The trace ID is an EagleEye ID</h3>
   <p>EagleEye is Alibaba's distributed tracing system. Each incoming request gets a trace ID that is
