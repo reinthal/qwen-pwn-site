@@ -1,0 +1,38 @@
+{
+  "2026-11-11T19-16-24-00-00_qwen-continue_bk2BwGrnSxNwuES2aSXYBJ-rescored.eval": {
+    "eval_id": "kpPuxLqMr5LK3fYbyxFucF",
+    "run_id": "MMR632B6vZCjSRQSLktqbb",
+    "task": "qwen_continue",
+    "task_id": "bk2BwGrnSxNwuES2aSXYBJ",
+    "task_version": 0,
+    "version": 2,
+    "status": "success",
+    "invalidated": false,
+    "model": "featherless-raw/Qwen/Qwen3.8-Flash-Next",
+    "started_at": "2026-11-11T19:16:24+00:00",
+    "completed_at": "2026-11-11T22:51:47+00:00",
+    "primary_metric": {
+      "name": "accuracy",
+      "value": 0.94,
+      "params": {}
+    }
+  },
+  "2026-11-11T15-11-41-00-00_qwen-continue_YCkBcDAd9AfzeTJXXfWNuo-rescored.eval": {
+    "eval_id": "WdESe2tkFwen7Bt7A6jEFy",
+    "run_id": "nvVgAqz7s4wW7LkdfAt2qr",
+    "task": "qwen_continue",
+    "task_id": "YCkBcDAd9AfzeTJXXfWNuo",
+    "task_version": 0,
+    "version": 2,
+    "status": "success",
+    "invalidated": false,
+    "model": "featherless-raw/Qwen/Qwen3.8-Flash-Next",
+    "started_at": "2026-11-11T15:11:41+00:00",
+    "completed_at": "2026-11-11T19:15:53+00:00",
+    "primary_metric": {
+      "name": "accuracy",
+      "value": 0.98,
+      "params": {}
+    }
+  }
+}

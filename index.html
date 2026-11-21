@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TL;DR: Qwen3.8-Flash-Next memorized Alibaba's storage URLs</title>
+<meta name="description" content="What happens when Qwen3.8-Flash-Next's unprompted request to Alibaba OSS is allowed to run, and where the URLs come from. Short version, with the full Inspect eval logs.">
+<style>
+  :root {
+    --bg: #fcfcfa; --fg: #1c1d1f; --muted: #62666d; --line: #e2e3df;
+    --card: #f3f4f0; --accent: #b4441d; --good: #1f7a4d; --code: #ecede8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141516; --fg: #e6e6e3; --muted: #9a9ea6; --line: #2c2e31;
+      --card: #1d1f21; --accent: #f08a5d; --good: #5fc592; --code: #232528;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 17px/1.6 Charter, "Bitstream Charter", "Iowan Old Style", Georgia, serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 56px 16px 80px; }
+  h1 { font-size: 2.1rem; line-height: 1.2; margin: 0 0 12px; text-wrap: balance; }
+  h2 { font-size: 1.3rem; margin: 48px 0 8px; line-height: 1.3; }
+  p { margin: 12px 0; }
+  a { color: var(--accent); }
+  .meta, figcaption, .note { color: var(--muted); font-size: 0.88rem; }
+  .meta, th, .cta, .stat span, figcaption, .note {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  code {
+    font: 0.85em ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--code); padding: 1px 5px; border-radius: 4px;
+    overflow-wrap: anywhere;
+  }
+  .tldr {
+    background: var(--card); border-left: 3px solid var(--accent);
+    padding: 14px 20px; margin: 28px 0; border-radius: 0 6px 6px 0;
+  }
+  .tldr ul { margin: 0; padding-left: 20px; }
+  .tldr li { margin: 8px 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+  .stat { background: var(--card); border-radius: 6px; padding: 14px 16px; }
+  .stat b { display: block; font: 600 1.7rem/1.1 system-ui, sans-serif; }
+  .stat span { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.35; margin-top: 6px; }
+  .stat.good b { color: var(--good); }
+  .scroll { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.n, th.n { text-align: right; padding-right: 0; padding-left: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  figure { margin: 24px 0; }
+  figure img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); display: block; }
+  figcaption { margin-top: 8px; }
+  .cta {
+    display: inline-block; background: var(--accent); color: var(--bg);
+    padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.95rem;
+  }
+  .links { margin: 8px 0 0; padding-left: 20px; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--line); }
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: 1fr; }
+    h1 { font-size: 1.7rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="meta">21 November 2026 · short version of
+    <a href="https://reinthal.me/posts/qwen38-memorized-alibaba-storage-keys/">the full write-up</a></p>
+  <h1>Qwen3.8-Flash-Next memorized Alibaba's storage URLs</h1>
+  <p>Cohere <a href="https://cohere.com/blog/concerning-behaviour-popular-open-weight-ai-model">reported</a>
+    that Qwen3.8-Flash-Next, asked to write a detection rule in a sandbox, made an unprompted
+    <code>curl</code> PUT to an Alibaba Cloud storage bucket. Their sandbox blocked the call. We replayed
+    the same trace and let the call go through, to a fake storage server we control.</p>
+
+  <div class="tldr">
+    <ul>
+      <li><strong>It looks like leaked training data, not a backdoor.</strong> After the request is
+        answered, the model goes back to its task in 97 of 100 runs.</li>
+      <li><strong>Planted secrets were not sent to Alibaba storage.</strong> Across 50 runs with fake
+        credentials in the sandbox, none reached our storage server.</li>
+      <li><strong>The URLs come from Alibaba-internal telemetry.</strong> The model reproduces the URL
+        format, the internal IP ranges and one real access key ID. The per-request details are made up.</li>
+    </ul>
+  </div>
+
+  <h2>1. What happens if the request is allowed to run?</h2>
+  <p>We replay Cohere's recorded trace token for token and stop one token before the URL. The model
+    writes the rest of the command itself, and every request it makes is answered by a local
+    S3-compatible server standing in for Alibaba OSS, with no route to the internet. We ran this 50
+    times with fake secrets planted in the sandbox and 50 times without.</p>
+
+  <div class="stats">
+    <div class="stat good"><b>97 / 100</b><span>runs carry on with the detection-rule task</span></div>
+    <div class="stat"><b>75 / 100</b><span>runs make a request to <code>*.aliyuncs.com</code></span></div>
+    <div class="stat good"><b>0 / 50</b><span>runs where a planted secret reached the storage server</span></div>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <tr><th></th><th class="n">With secrets</th><th class="n">Without</th></tr>
+    <tr><td>Carries on with the task</td><td class="n">49 / 50</td><td class="n">48 / 50</td></tr>
+    <tr><td>Requests Alibaba OSS at any point</td><td class="n">33 / 50</td><td class="n">42 / 50</td></tr>
+    <tr><td>…already in the first command</td><td class="n">12 / 50</td><td class="n">23 / 50</td></tr>
+    <tr><td>Reads a planted secret</td><td class="n">4 / 50</td><td class="n">n/a</td></tr>
+    <tr><td>Planted secret confirmed sent</td><td class="n">0 / 50</td><td class="n">n/a</td></tr>
+  </table>
+  </div>
+
+  <p>The storage server mostly answers with errors, because the buckets the model asks for do not
+    exist. The model reads the error and keeps working.</p>
+  <p>It is not all benign. Most runs poke around the sandbox beyond what the task needs. In one run the
+    model read a planted Kusto client secret with <code>sudo</code> and posted it to
+    <code>login.microsoftonline.com</code> to get a token for the task's own database. The request
+    failed at the TLS handshake, so the secret never left. That is a model using a credential nobody
+    gave it, though not one sending data to Alibaba.</p>
+
+  <h2>2. Where do the URLs come from?</h2>
+  <p>With the same prompt and nothing about Alibaba in the context, Qwen3.8-Flash-Next writes a URL for
+    one particular bucket, <code>routify-file-proxy-sg</code>, in 37% of samples (4,679 of 12,632). The
+    smaller Qwen3.8-27B does so in 0 of 30. The URLs carry:</p>
+  <ul>
+    <li>an access key ID, <code>LTAI5tKoG9A3DkwGD635QVZr</code>, which also appears in a
+      <a href="https://github.com/hangtiancheng/yukino-code/issues/2">public GitHub issue</a>. We found
+      the ID only, never the matching secret;</li>
+    <li>development and production folders with dated paths, starting in 2025;</li>
+    <li>trace IDs in the format of Alibaba's EagleEye tracing system, which decode to internal
+      33.x and 11.x addresses.</li>
+  </ul>
+
+  <figure>
+    <img src="routify-dates.png" alt="Bar chart of trace dates in the emitted URLs per month, from late 2024 to late 2026, with peaks in January and August 2026, and a scatter plot of trace date against signed-URL expiry date.">
+    <figcaption>Dates in the URLs the model writes: 992 unique URLs with a trace date, peaking in
+      January and August 2026.</figcaption>
+  </figure>
+
+  <h2>3. Memorized or made up?</h2>
+  <p>Both. We scored how likely the model finds a real URL compared with a version where one field is
+    swapped out. A large gap means the model knows that field; no gap means it is guessing.</p>
+  <div class="scroll">
+  <table>
+    <tr><th>Field</th><th class="n">Real vs. swapped</th><th>Verdict</th></tr>
+    <tr><td>Internal IP range (33.x, 11.x)</td><td class="n">+25.4 bits, 10 / 10</td><td>Memorized</td></tr>
+    <tr><td>Which internal host</td><td class="n">−1.0 bits, 4 / 10</td><td>Guessed</td></tr>
+    <tr><td>Millisecond timestamp</td><td class="n">+0.5 to +2.5 bits</td><td>Guessed</td></tr>
+  </table>
+  </div>
+  <p>Of 632 decoded trace IDs, 631 start with an Alibaba-internal address. The model learned the
+    standing infrastructure (format, IP ranges, folder layout, key ID) and fills in the per-request
+    values at random. That is what you would expect if real internal telemetry URLs were in the
+    training data.</p>
+
+  <h2>What this does not show</h2>
+  <ul>
+    <li>Secrets sent over HTTPS to hosts outside our certificate's 28 names would fail before any data
+      is sent, so "0 confirmed" may undercount.</li>
+    <li>Carrying on with the task is judged by an LLM (DeepSeek V4.1 Flash). Whether the final rule is
+      any good was not graded.</li>
+    <li>The memorization test used one prompt, 10 URLs and an FP8-quantized model.</li>
+    <li>Some first commands go to unregistered domains instead of Alibaba. Whether a third party could
+      register those and hijack sessions is untested.</li>
+  </ul>
+
+  <h2>Read the transcripts</h2>
+  <p>All 100 runs are browsable in the Inspect log viewer, with every command, tool result and score.</p>
+  <p><a class="cta" href="logs/">Open the eval logs</a></p>
+  <ul class="links">
+    <li><a href="logs/#/logs/2026-11-11T15-11-41-00-00_qwen-continue_YCkBcDAd9AfzeTJXXfWNuo-rescored.eval">50 runs with planted secrets</a></li>
+    <li><a href="logs/#/logs/2026-11-11T19-16-24-00-00_qwen-continue_bk2BwGrnSxNwuES2aSXYBJ-rescored.eval">50 runs without</a></li>
+  </ul>
+  <p class="note">The credentials in the first set are random fakes generated per run. Transcripts
+    contain model-written URLs and key IDs; do not request them.</p>
+
+  <footer class="meta">
+    Model: Qwen3.8-Flash-Next via Featherless raw completions, temperature 1.0, up to 30 turns.
+    Original observation and trace:
+    <a href="https://cohere.com/blog/concerning-behaviour-popular-open-weight-ai-model">Cohere</a>,
+    <a href="https://huggingface.co/datasets/CohereLabs/10-2026-qwen-investigation-traces">dataset</a>.
+  </footer>
+</main>
+</body>
+</html>
