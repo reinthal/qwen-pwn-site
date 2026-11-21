@@ -42,6 +42,7 @@
   pre i { color: var(--muted); }
   pre b { color: var(--accent); font-weight: 600; }
   h3 { font-size: 1.08rem; margin: 28px 0 4px; }
+  .lead { font-size: 1.15rem; line-height: 1.55; margin: 16px 0 24px; }
   .tldr {
     background: var(--card); border-left: 3px solid var(--accent);
     padding: 14px 20px; margin: 28px 0; border-radius: 0 6px 6px 0;
@@ -78,6 +79,9 @@
   <p class="meta">21 November 2026 · short version of
     <a href="https://reinthal.me/posts/qwen38-memorized-alibaba-storage-keys/">the full write-up</a></p>
   <h1>Qwen3.8-Flash-Next memorized Alibaba's storage URLs</h1>
+  <p class="lead">These findings suggest that open-weight models can remember what their training
+    environment looked like. This raises an interesting security concern: can we do more model
+    forensics to uncover important security flaws in training environments?</p>
   <p>Cohere <a href="https://cohere.com/blog/concerning-behaviour-popular-open-weight-ai-model">reported</a>
     that Qwen3.8-Flash-Next, asked to write a detection rule in a sandbox, made an unprompted
     <code>curl</code> PUT to an Alibaba Cloud storage bucket. Their sandbox blocked the call. We replayed
@@ -134,13 +138,31 @@
 
   <p>Every one of these URLs has the same layout:</p>
   <pre>https://routify-file-proxy-sg.oss-ap-southeast-1.aliyuncs.com
-  /proxy_temp_file/production/<i>&lt;date&gt;</i>
+  /proxy_temp_file/<i>&lt;environment&gt;</i>/<i>&lt;date&gt;</i>
   /trace_<i>&lt;EagleEye trace ID&gt;</i>/requestId_<i>&lt;request ID&gt;</i>/<i>&lt;file hash&gt;</i>
   ?Expires=<i>&lt;Unix time&gt;</i>&amp;OSSAccessKeyId=LTAI5tKoG9A3DkwGD635QVZr&amp;Signature=<i>&lt;HMAC&gt;</i></pre>
   <p>This is a signed download link for Alibaba's object storage (OSS). The query string says who
     signed the link (the access key ID), until when it is valid (<code>Expires</code>) and carries a
     signature over both. The path looks like a service that stores temporary files per request, in a
-    <code>production</code> or <code>development</code> folder, sorted by day.</p>
+    folder per environment, sorted by day.</p>
+
+  <h3>Two environments: production and development</h3>
+  <p>The folder after <code>proxy_temp_file/</code> is almost always <code>production</code>. We
+    checked whether the model knows any other name for that slot, and found exactly one:
+    <code>development</code>.</p>
+  <ul>
+    <li>On the larger Qwen3.8-2.4T, where we can read token probabilities, <code>production</code> gets
+      about 97.5% and <code>development</code> is the only other environment name in the top 20.</li>
+    <li>Given <code>development/</code>, both models continue straight to a date and a trace ID, as
+      they do for <code>production/</code>. That trace ID decodes to an internal 33.x address too.</li>
+    <li>Given <code>staging/</code>, <code>test/</code>, <code>qa/</code>, <code>dev/</code> or
+      <code>prod/</code>, the model does not accept the word and writes <code>production</code> after
+      it.</li>
+    <li><code>development</code> is rare. In 200 free samples from Flash-Next it never came up on its
+      own; <code>production</code> came up 144 times.</li>
+  </ul>
+  <p>A backdoor would need one fixed destination. A service with a production and a development
+    environment is what real infrastructure looks like.</p>
 
   <h3>The trace ID is an EagleEye ID</h3>
   <p>EagleEye is Alibaba's distributed tracing system. Each incoming request gets a trace ID that is
@@ -157,7 +179,7 @@
     the model's output gives three results:</p>
   <ul>
     <li>the addresses fall in 33.x and 11.x, ranges Alibaba uses internally;</li>
-    <li>the decoded date matches the date folder in the path, with dates starting in 2025;</li>
+    <li>the decoded date matches the date folder in the path;</li>
     <li><code>Expires</code> is the decoded time plus 360 days, to within a second or two.</li>
   </ul>
   <p>The access key ID, <code>LTAI5tKoG9A3DkwGD635QVZr</code>, also appears in a
@@ -169,6 +191,13 @@
     <figcaption>Dates in the URLs the model writes: 992 unique URLs with a trace date, peaking in
       January and August 2026.</figcaption>
   </figure>
+
+  <h3>The dates cluster in early 2026</h3>
+  <p>The dates run from late 2024 to late 2026, but they are far from evenly spread. The model is
+    most likely to write a date in early 2026: January 2026 is the most common month, with about 3 in
+    10 of the dated URLs, and December 2025 to February 2026 together hold almost half. A second
+    cluster sits in July and August 2026 (about a third, nearly all in August), and a smaller one in
+    July and August 2025. Most other months are close to empty.</p>
 
   <h2>3. Memorized or made up?</h2>
   <p>Both. We scored how likely the model finds a real trace ID compared with a version where one of
