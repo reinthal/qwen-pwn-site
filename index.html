@@ -207,8 +207,13 @@
     <li><code>Expires</code> is the decoded time plus 360 days, to within a second or two.</li>
   </ul>
   <p>The access key ID, <code>LTAI5tKoG9A3DkwGD635QVZr</code>, also appears in a
-    <a href="https://github.com/hangtiancheng/yukino-code/issues/2">public GitHub issue</a>. We found
-    the ID only, never the matching secret.</p>
+    <a href="https://github.com/hangtiancheng/yukino-code/issues/2">public GitHub issue</a>. A key ID
+    on its own grants nothing. A working link also needs a valid signature, which is computed with a
+    secret key that never appears in a URL.</p>
+  <p>Analyzing the signatures in the URLs, we noticed that they were rarely the correct length. An
+    OSS signature is 28 characters long (a 20-byte HMAC-SHA1 in base64). Of the 436 signatures the
+    model wrote, 3 are. As such, we do not think that the model has internalized full credentials for
+    the object storage.</p>
 
   <h3>The dates cluster in early 2026</h3>
   <p>The decoded dates run from January 2025 to mid-2026 (chart at the top), but they are far from
