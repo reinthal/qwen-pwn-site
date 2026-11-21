@@ -111,9 +111,9 @@
     </ul>
   </div>
 
-  <p>One likely reason for this behavior is that agents running Qwen3.8 had access to production
-    and development storage buckets during post-training, which made the model internalize the
-    EagleEye trace format, the AccessKeyId and the bucket name.</p>
+  <p>One likely reason for this behavior is that agents running Qwen3.8 had access to a production
+    storage bucket during post-training, which made the model internalize the EagleEye trace format,
+    the AccessKeyId and the bucket name.</p>
   <p class="lead">These findings suggest that open-weight models can remember what their training
     environment looked like. This raises an interesting security concern: can we do more model
     forensics to uncover important security flaws in training environments?</p>
@@ -166,7 +166,7 @@
     signature over both. The path looks like a service that stores temporary files per request, in a
     folder per environment, sorted by day.</p>
 
-  <h3>Two environments: production and development</h3>
+  <h3>Is there a development environment too?</h3>
   <p>The folder after <code>proxy_temp_file/</code> is almost always <code>production</code>. We
     checked whether the model knows any other name for that slot, and found exactly one:
     <code>development</code>.</p>
